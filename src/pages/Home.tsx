@@ -1,0 +1,130 @@
+import { useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { DistributionChart } from '../components/Charts';
+import { PlayerSearchBox } from '../components/Search';
+import { Delta, Loading, PlayerCell, Rating, Sparkline, Stat } from '../components/ui';
+import { useDataset, useEvents } from '../lib/data';
+import { fmtDate, isActive, relative } from '../lib/format';
+import { starred, useList } from '../lib/store';
+
+export default function Home() {
+  const ds = useDataset();
+  const ev = useEvents();
+  const stars = useList(starred);
+  const nav = useNavigate();
+
+  const s = useMemo(() => {
+    if (!ds) return null;
+    const active = ds.players.filter((p) => isActive(p) && p.rating != null && !p.deceased);
+    const top = [...active].sort((a, b) => b.rating! - a.rating!).slice(0, 10);
+    const movers = active.filter((p) => p.ch12 != null).sort((a, b) => b.ch12! - a.ch12!).slice(0, 8);
+    const yearAgo = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const newPlayers = ds.players.filter((p) => p.first && p.first >= yearAgo).length;
+    return { active, top, movers, newPlayers, yearAgo };
+  }, [ds]);
+
+  if (!ds || !s) return <div className="stack"><Loading h={140} /><Loading h={320} /></div>;
+
+  const starredPlayers = stars.map((id) => ds.byId.get(id)).filter((p) => !!p);
+
+  return (
+    <div className="stack" style={{ gap: 24 }}>
+      <section style={{ padding: '28px 0 8px' }}>
+        <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', letterSpacing: '-0.03em', maxWidth: 720 }}>
+          Every {ds.meta.region} table tennis rating, <span style={{ color: 'var(--accent)' }}>beautifully searchable.</span>
+        </h1>
+        <p className="ink2" style={{ fontSize: 17, maxWidth: 620, margin: '12px 0 20px' }}>
+          Find any player instantly, explore their full rating history and match record, and compare up to six players side by side.
+        </p>
+        <div style={{ maxWidth: 620 }}>
+          <PlayerSearchBox ds={ds} big placeholder="Search a player by name or ID…" />
+        </div>
+      </section>
+
+      <div className="grid grid-4">
+        <Stat label="Rated players" value={ds.players.length.toLocaleString()} foot={`${s.newPlayers} new this year`} />
+        <Stat label="Active (12 months)" value={s.active.length.toLocaleString()} foot={`${Math.round((100 * s.active.length) / ds.players.length)}% of all players`} />
+        <Stat label="Events (12 months)" value={ev ? ev.list.filter((e) => e.date >= s.yearAgo).length : '…'} foot={ev ? `${ev.list.length.toLocaleString()} all-time` : undefined} />
+        <Stat label="Last updated" value={<span style={{ fontSize: 22 }}>{relative(ds.meta.updated.slice(0, 10))}</span>} foot={fmtDate(ds.meta.updated.slice(0, 10))} />
+      </div>
+
+      {starredPlayers.length > 0 && (
+        <div className="card flush">
+          <div className="card-head"><h2>★ Your players</h2><span className="sub">starred on this device</span></div>
+          <div style={{ marginTop: 10 }}>
+            {starredPlayers.map((p) => (
+              <Link key={p.id} to={`/player/${p.id}`} className="list-item">
+                <PlayerCell p={p} ds={ds} sub={`played ${relative(p.lastPlayed)}`} />
+                <span className="spacer" />
+                <span className="hide-sm"><Sparkline data={p.spark} /></span>
+                <Delta v={p.ch12} />
+                <Rating p={p} />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-2">
+        <div className="card flush">
+          <div className="card-head"><h2>Top rated</h2><span className="sub">active in the last 12 months</span><span className="spacer" />
+            <Link to="/players" className="link small">All players →</Link></div>
+          <div style={{ marginTop: 10 }}>
+            {s.top.map((p, i) => (
+              <Link key={p.id} to={`/player/${p.id}`} className="list-item">
+                <span className="rank-no">{i + 1}</span>
+                <PlayerCell p={p} ds={ds} />
+                <span className="spacer" />
+                <span className="hide-sm"><Sparkline data={p.spark} width={70} /></span>
+                <Rating p={p} />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="card flush">
+          <div className="card-head"><h2>Biggest climbers</h2><span className="sub">rating gain, last 12 months</span></div>
+          <div style={{ marginTop: 10 }}>
+            {s.movers.map((p) => (
+              <Link key={p.id} to={`/player/${p.id}`} className="list-item">
+                <PlayerCell p={p} ds={ds} />
+                <span className="spacer" />
+                <span className="hide-sm"><Sparkline data={p.spark} width={70} /></span>
+                <Delta v={p.ch12} />
+                <span className="rating" style={{ width: 44, textAlign: 'right' }}>{p.rating}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-2">
+        <div className="card">
+          <div className="card-head"><h2>Rating distribution</h2><span className="sub">active players, 100-point bands</span></div>
+          <DistributionChart ratings={s.active.map((p) => p.rating!)} />
+        </div>
+
+        <div className="card flush">
+          <div className="card-head"><h2>Recent events</h2><span className="spacer" /><Link to="/events" className="link small">All events →</Link></div>
+          <div style={{ marginTop: 10 }}>
+            {!ev && <div style={{ padding: 18 }}><Loading h={200} /></div>}
+            {ev?.list.slice(0, 6).map((e) => (
+              <div key={e.id} className="list-item" style={{ cursor: 'pointer' }} onClick={() => nav(`/event/${e.id}`)}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
+                  <div className="small muted">{fmtDate(e.date)} · {e.players.length} {e.players.length === 1 ? 'player' : 'players'}</div>
+                </div>
+                {e.players[0] && (
+                  <div className="small hide-sm" style={{ textAlign: 'right' }}>
+                    <div className="muted">Top gain</div>
+                    <Delta v={e.players[0].pc} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
