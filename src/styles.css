@@ -170,6 +170,9 @@ main.container { padding-top: 24px; padding-bottom: 96px; }
   background: var(--surface); color: var(--muted); font-size: 14px;
 }
 .search-trigger:hover { border-color: var(--accent); }
+.header-search { flex: 0 1 300px; min-width: 0; }
+.header-search .input { height: 38px; font-size: 14px; }
+.header-search .dropdown { left: auto; width: min(460px, calc(100vw - 32px)); }
 kbd {
   font: 11px var(--font); padding: 1px 6px; border-radius: 5px;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--muted);
@@ -184,6 +187,9 @@ kbd {
   .topbar .nav { display: none; }
   .search-trigger { min-width: 0; flex: 1; }
   .search-trigger .hint { display: none; }
+  .header-search { flex: 1; }
+  .header-search .input { font-size: 16px; } /* 16px stops iOS zooming in */
+  .header-search .dropdown { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; max-height: calc(100dvh - 150px); }
   .brand small { display: none; }
   .mobile-nav {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;

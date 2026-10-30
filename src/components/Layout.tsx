@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useDataset } from '../lib/data';
 import { fmtDate } from '../lib/format';
 import { compareTray, useList } from '../lib/store';
-import { CommandPalette } from './Search';
+import { PlayerSearchBox } from './Search';
 import { Avatar, Icon, useMobile } from './ui';
 
 const NAV = [
@@ -89,7 +89,7 @@ function CompareTray() {
 export default function Layout() {
   const ds = useDataset();
   const mobile = useMobile();
-  const [palette, setPalette] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function Layout() {
       const typing = (e.target as HTMLElement)?.closest('input, textarea, select');
       if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
         e.preventDefault();
-        setPalette(true);
+        searchRef.current?.focus();
       }
     };
     addEventListener('keydown', onKey);
@@ -117,10 +117,7 @@ export default function Layout() {
             {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}>{n.label}</NavLink>)}
           </nav>
           <div className="spacer hide-md" />
-          <button className="search-trigger" onClick={() => setPalette(true)}>
-            <Icon name="search" size={16} /><span style={{ flex: 1, textAlign: 'left' }}>Search players</span>
-            <span className="hint"><kbd>⌘</kbd> <kbd>K</kbd></span>
-          </button>
+          <PlayerSearchBox ds={ds} className="header-search" inputRef={searchRef} placeholder={mobile ? 'Search players…' : 'Search players  (⌘K)'} />
           <ThemeToggle compact={mobile} />
         </div>
       </header>
@@ -141,7 +138,6 @@ export default function Layout() {
       </nav>
 
       <CompareTray />
-      {palette && <CommandPalette ds={ds} onClose={() => setPalette(false)} />}
     </>
   );
 }

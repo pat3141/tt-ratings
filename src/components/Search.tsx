@@ -38,52 +38,30 @@ function useKeyboardList(results: Player[], onPick: (p: Player) => void) {
   return { sel, setSel, onKeyDown };
 }
 
-export function CommandPalette({ ds, onClose }: { ds: Dataset | null; onClose: () => void }) {
-  const [q, setQ] = useState('');
-  const nav = useNavigate();
-  const results = useResults(ds, q, 30);
-  const pick = (p: Player) => { nav(`/player/${p.id}`); onClose(); };
-  const { sel, setSel, onKeyDown } = useKeyboardList(results, pick);
-
-  return (
-    <div className="overlay" onMouseDown={onClose}>
-      <div className="palette" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Search players">
-        <div className="search-wrap">
-          <Icon name="search" size={20} />
-          <input autoFocus placeholder="Search by name, ID or club…" value={q} onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); else onKeyDown(e); }} aria-label="Search players" />
-        </div>
-        <div className="results" role="listbox">
-          {!q.trim() && <div className="empty">Type a name — typos are fine. Try a surname, first name, or Ratings Central ID.</div>}
-          {q.trim() && !results.length && <div className="empty">No players match “{q}”.</div>}
-          {ds && results.map((p, i) => (
-            <ResultRow key={p.id} p={p} ds={ds} sel={i === sel} onPick={() => pick(p)} onHover={() => setSel(i)} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** Inline search box with dropdown. `onPick` defaults to navigating to the player. */
-export function PlayerSearchBox({ ds, onPick, placeholder = 'Search players…', big, exclude = [] }: {
+export function PlayerSearchBox({ ds, onPick, placeholder = 'Search players…', big, exclude = [], inputRef, className = '' }: {
   ds: Dataset | null; onPick?: (p: Player) => void; placeholder?: string; big?: boolean; exclude?: number[];
+  inputRef?: React.Ref<HTMLInputElement>; className?: string;
 }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
   const raw = useResults(ds, q, 12);
   const results = useMemo(() => raw.filter((p) => !exclude.includes(p.id)), [raw, exclude]);
-  const pick = (p: Player) => { (onPick ?? ((x) => nav(`/player/${x.id}`)))(p); setQ(''); setOpen(false); };
+  const pick = (p: Player) => {
+    (onPick ?? ((x) => nav(`/player/${x.id}`)))(p);
+    setQ(''); setOpen(false);
+    if (!onPick) (document.activeElement as HTMLElement | null)?.blur(); // close the mobile keyboard after navigating
+  };
   const { sel, setSel, onKeyDown } = useKeyboardList(results, pick);
 
   return (
-    <div className="search-wrap palette-inline" style={{ position: 'relative' }}>
+    <div className={`search-wrap palette-inline ${className}`} style={{ position: 'relative' }}>
       <Icon name="search" size={big ? 20 : 17} />
-      <input className={`input ${big ? 'big' : ''}`} style={big ? undefined : { width: '100%', paddingLeft: 40 }}
+      <input ref={inputRef} type="search" enterKeyHint="go" autoComplete="off" className={`input ${big ? 'big' : ''}`} style={big ? undefined : { width: '100%', paddingLeft: 40 }}
         placeholder={placeholder} value={q} aria-label={placeholder}
         onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
-        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); else onKeyDown(e); }} />
+        onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); e.currentTarget.blur(); } else onKeyDown(e); }} />
       {open && q.trim() && ds && (
         <div className="dropdown palette" role="listbox" style={{ maxWidth: 'none' }}>
           {!results.length && <div className="empty">No players match “{q}”.</div>}

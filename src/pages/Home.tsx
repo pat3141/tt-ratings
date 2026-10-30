@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DistributionChart } from '../components/Charts';
-import { PlayerSearchBox } from '../components/Search';
 import { Delta, Icon, Loading, PlayerCell, Rating, Sparkline, Stat } from '../components/ui';
 import { useDataset, useEvents } from '../lib/data';
 import { fmtDate, isActive, relative, since } from '../lib/format';
@@ -67,12 +66,9 @@ export default function Home() {
         <h1>
           Every {ds.meta.region} table tennis rating, <span className="grad-text">beautifully searchable.</span>
         </h1>
-        <p className="ink2" style={{ fontSize: 17, maxWidth: 620, margin: '12px 0 20px' }}>
-          Find any player instantly, explore their full rating history and match record, and compare up to six players side by side.
+        <p className="ink2" style={{ fontSize: 17, maxWidth: 620, margin: '12px 0 0' }}>
+          Find any player with the search bar above, explore their full rating history and match record, and compare up to six players side by side.
         </p>
-        <div style={{ maxWidth: 620 }}>
-          <PlayerSearchBox ds={ds} big placeholder="Search a player by name or ID…" />
-        </div>
       </section>
 
       <div className="grid grid-4">
