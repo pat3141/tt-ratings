@@ -187,7 +187,7 @@ for (const r of playerRows) {
 
   players.push({
     id, name: r.Name, rating, sd: num(r.StDev), club: num(r.PrimaryClub),
-    city: r.City, sex: r.Sex, lastPlayed: r.LastPlayed || null, lastEvent: num(r.LastEvent),
+    city: r.City, state: r.Province.toUpperCase() || null, sex: r.Sex, lastPlayed: r.LastPlayed || null, lastEvent: num(r.LastEvent),
     rank: num(r.Rank), ittf: r.ITTF === 'Y', tta: num(r.TTA_ID) || null,
     deceased: r.Deceased === 'Y',
     first: h[0]?.d ?? null, events: h.length, peak: peak?.m ?? rating, peakDate: peak?.d ?? null,
@@ -209,6 +209,28 @@ const eventList = [...events.values()]
 
 const usedClubs = new Set(players.map((p) => p.club));
 const clubOut = Object.values(clubs).filter((c) => usedClubs.has(c.id));
+
+// Country-wide snapshot of active players, so the site can show national and state percentiles.
+// One request; a failure here keeps the previous snapshot rather than breaking the run.
+console.log('Fetching national ratings…');
+try {
+  await sleep(DELAY_MS);
+  const nat = parseCSV(await get(`${BASE}/PlayerList.php?${qs({
+    PlayerSport: 'Any', PlayerCountry: region.country, SortOrder: 'Rating', CSV_Output: 'Text',
+  })}`))
+    .filter((r) => r.Rating !== '' && r.Deceased !== 'Y' && r.LastPlayed >= yearAgo)
+    .sort((a, b) => num(b.Rating) - num(a.Rating));
+  const states = [...new Set(nat.map((r) => r.Province.toUpperCase()))].sort();
+  await fs.writeFile(path.join(OUT, 'national.json'), JSON.stringify({
+    country: region.country, states,
+    r: nat.map((r) => num(r.Rating)),
+    s: nat.map((r) => (r.Sex === 'F' ? 'F' : 'M')).join(''),
+    p: nat.map((r) => states.indexOf(r.Province.toUpperCase())),
+  }));
+  console.log(`  ${nat.length} active players nationally`);
+} catch (err) {
+  console.log(`  national list failed (${err.message}); keeping previous snapshot`);
+}
 
 await fs.writeFile(path.join(OUT, 'players.json'), JSON.stringify({ players }));
 await fs.writeFile(path.join(OUT, 'clubs.json'), JSON.stringify(clubOut));

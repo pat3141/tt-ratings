@@ -7,6 +7,8 @@ export interface Player {
   sd: number | null;
   club: number | null;
   city: string;
+  /** State on the player's Ratings Central record (may differ from the region). */
+  state?: string | null;
   sex: string;
   lastPlayed: string | null;
   lastEvent: number | null;
@@ -106,6 +108,20 @@ export function useEvents(): Events | null {
   const [ev, setEv] = useState<Events | null>(null);
   useEffect(() => { loadEvents().then(setEv); }, []);
   return ev;
+}
+
+/** Active players across the country, sorted by rating (highest first). */
+export interface National { country: string; states: string[]; r: number[]; s: string; p: number[] }
+
+let nationalPromise: Promise<National | null> | null = null;
+
+export function useNational(): National | null {
+  const [n, setN] = useState<National | null>(null);
+  useEffect(() => {
+    nationalPromise ??= json<National>('national.json').catch(() => null);
+    nationalPromise.then(setN);
+  }, []);
+  return n;
 }
 
 const detailCache = new Map<number, Promise<PlayerDetail>>();

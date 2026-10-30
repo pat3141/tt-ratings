@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RangePicker, RatingHistoryChart, type Range } from '../components/Charts';
 import { Avatar, CompareButton, MeButton, Delta, Icon, Loading, MRow, SortSelect, StarButton, Stat, cmp, useMobile, useSort } from '../components/ui';
+import { FormCard, StandingCard } from '../components/Standing';
 import { loadPlayer, rcPlayerUrl, useDataset, type Dataset, type MatchRow, type PlayerDetail } from '../lib/data';
 import { displayName, fmtDate, fmtMonth, isActive, relative, winPct } from '../lib/format';
 
@@ -377,6 +378,11 @@ export default function PlayerPage() {
         <Stat label="Match record" value={<>{p.w}<span className="muted">–</span>{p.l}</>} foot={pct != null ? `${pct}% win rate` : 'No matches'} />
         <Stat label="Events played" value={p.events} foot={p.first ? `since ${new Date(p.first).getFullYear()}` : undefined} />
         <Stat label="Best win" value={bestWin ? bestWin.om : '—'} foot={bestWin ? displayName(bestWin.on) : d ? 'No wins yet' : '…'} />
+      </div>
+
+      <div className="grid grid-2">
+        <StandingCard ds={ds} p={p} />
+        <FormCard d={d} />
       </div>
 
       <div className="card">

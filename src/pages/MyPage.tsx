@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { RangePicker, RatingHistoryChart, type Range } from '../components/Charts';
 import { PlayerSearchBox } from '../components/Search';
 import { Avatar, Delta, Icon, Loading, MRow, PlayerCell, Rating, Sparkline, StarButton, cmp, useMobile, useSort } from '../components/ui';
+import { FormCard, StandingCard } from '../components/Standing';
 import { loadPlayer, useDataset, type Dataset, type Player, type PlayerDetail } from '../lib/data';
 import { displayName, fmtDate, isActive, relative } from '../lib/format';
 import {
@@ -43,6 +44,12 @@ export default function MyPage() {
       </div>
 
       {mine ? <MyProfile ds={ds} p={mine} detail={detail} isNew={isNew(mine)} /> : <ClaimProfile ds={ds} />}
+      {mine && (
+        <div className="grid grid-2">
+          <StandingCard ds={ds} p={mine} you />
+          <FormCard d={detail} />
+        </div>
+      )}
 
       <Watchlist ds={ds} ids={ids} mine={mine} detail={detail} isNew={isNew} />
 

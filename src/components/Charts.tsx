@@ -15,10 +15,20 @@ const axisProps = {
 const yearTick = (t: number) => String(new Date(t).getFullYear());
 const monthTick = (t: number) => new Date(t).toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
 
-/** Calendar-aligned ticks: quarters for short spans, whole years (thinned to <= 10) otherwise. */
+const dayTick = (t: number) => new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+
+/** Calendar-aligned ticks: weeks, months or quarters for short spans, whole years (thinned to <= 10) otherwise. */
 function timeTicks(min: number, max: number): { ticks: number[]; fmt: (t: number) => string } {
   const ticks: number[] = [];
   const a = new Date(min), span = max - min;
+  if (span <= 45 * 864e5) {
+    for (let d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + ((8 - a.getDay()) % 7)); d.getTime() <= max; d.setDate(d.getDate() + 7)) ticks.push(d.getTime());
+    return { ticks, fmt: dayTick };
+  }
+  if (span <= 200 * 864e5) {
+    for (let d = new Date(a.getFullYear(), a.getMonth() + 1, 1); d.getTime() <= max; d.setMonth(d.getMonth() + 1)) ticks.push(d.getTime());
+    return { ticks, fmt: monthTick };
+  }
   if (span < 2 * 365 * 864e5) {
     for (let d = new Date(a.getFullYear(), Math.ceil(a.getMonth() / 3) * 3, 1); d.getTime() <= max; d.setMonth(d.getMonth() + 3)) ticks.push(d.getTime());
     return { ticks, fmt: monthTick };
@@ -29,13 +39,15 @@ function timeTicks(min: number, max: number): { ticks: number[]; fmt: (t: number
   return { ticks, fmt: yearTick };
 }
 
-export type Range = 'all' | '5y' | '2y' | '1y';
-const RANGE_DAYS: Record<Range, number> = { all: Infinity, '5y': 1826, '2y': 730, '1y': 365 };
+export type Range = 'all' | '5y' | '2y' | '1y' | '6m' | '3m' | '1m';
+const RANGE_DAYS: Record<Range, number> = { all: Infinity, '5y': 1826, '2y': 730, '1y': 365, '6m': 183, '3m': 91, '1m': 30 };
+/** Short ranges show the whole window (even with few events) rather than zooming to the data. */
+const isShort = (r: Range) => RANGE_DAYS[r] < 365;
 
 export function RangePicker({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
   return (
     <div className="seg" role="group" aria-label="Time range">
-      {(['1y', '2y', '5y', 'all'] as Range[]).map((r) => (
+      {(['1m', '3m', '6m', '1y', '2y', '5y', 'all'] as Range[]).map((r) => (
         <button key={r} className={value === r ? 'on' : ''} onClick={() => onChange(r)}>{r === 'all' ? 'All' : r.toUpperCase()}</button>
       ))}
     </div>
@@ -62,23 +74,29 @@ function peakPos(t: number, min: number, max: number): 'top' | 'left' | 'right' 
   return f > 0.85 ? 'left' : f < 0.08 ? 'right' : 'top';
 }
 
-interface Pt { t: number; m: number; s: number; band: [number, number]; n: string; pc: number; im: number }
+interface Pt { t: number; m: number; s: number; band: [number, number]; n: string; pc: number; im: number; syn?: boolean }
 
 export function RatingHistoryChart({ history, range, showBand, height = 320 }: {
   history: HistoryRow[]; range: Range; showBand: boolean; height?: number;
 }) {
   const data: Pt[] = useMemo(() => {
     const cutoff = Date.now() - RANGE_DAYS[range] * 864e5;
-    return history
-      .map((h) => ({ t: toTime(h.d), m: h.m, s: h.s, band: [h.m - h.s, h.m + h.s] as [number, number], n: h.n, pc: h.pc, im: h.im }))
-      .filter((p) => p.t >= cutoff);
+    const all = history.map((h) => ({ t: toTime(h.d), m: h.m, s: h.s, band: [h.m - h.s, h.m + h.s] as [number, number], n: h.n, pc: h.pc, im: h.im }));
+    const inRange = all.filter((p) => p.t >= cutoff);
+    if (!isShort(range)) return inRange;
+    // carry the rating held at the start of the window in, and the current one out to today
+    const before = all.filter((p) => p.t < cutoff).at(-1);
+    const out = before ? [{ ...before, t: cutoff, n: 'Rating at start of period', pc: 0, im: before.m, syn: true }, ...inRange] : inRange;
+    const end = out.at(-1);
+    if (end && end.t < Date.now() - 864e5) out.push({ ...end, t: Date.now(), n: 'Current rating', pc: 0, im: end.m, syn: true });
+    return out;
   }, [history, range]);
 
   if (data.length === 0) {
     return <div className="muted" style={{ height, display: 'grid', placeItems: 'center' }}>No rated events in this period.</div>;
   }
 
-  const peak = data.reduce((a, b) => (b.m > a.m ? b : a));
+  const peak = data.reduce((a, b) => (b.m > a.m || (a.syn && b.m === a.m) ? b : a));
   const lo = Math.min(...data.map((d) => (showBand ? d.band[0] : d.m)));
   const hi = Math.max(...data.map((d) => (showBand ? d.band[1] : d.m)));
   const tt = timeTicks(data[0].t, data.at(-1)!.t);
@@ -99,15 +117,17 @@ export function RatingHistoryChart({ history, range, showBand, height = 320 }: {
               <div style={{ fontWeight: 600, marginBottom: 6 }}>{p.n}</div>
               <div className="row">
                 <span className="rating" style={{ fontSize: 18 }}>{p.m}</span><span className="sd">±{p.s}</span>
-                <span className="spacer" /><Delta v={p.pc} />
+                {!p.syn && <><span className="spacer" /><Delta v={p.pc} /></>}
               </div>
-              <div className="small muted">from {p.im}</div>
+              {!p.syn && <div className="small muted">from {p.im}</div>}
             </div>
           );
         }} />
         {showBand && <Area dataKey="band" stroke="none" fill="var(--band)" isAnimationActive={false} activeDot={false} />}
         <Line dataKey="m" stroke="var(--series-1)" strokeWidth={2} isAnimationActive={false}
-          dot={data.length <= 60 ? { r: 3, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 } : false}
+          dot={data.length <= 60 ? ({ cx, cy, payload, index }: { cx?: number; cy?: number; payload?: Pt; index?: number }) => (
+            payload?.syn ? <g key={index} /> : <circle key={index} cx={cx} cy={cy} r={3} fill="var(--series-1)" stroke="var(--surface)" strokeWidth={2} />
+          ) : false}
           activeDot={{ r: 6, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }} />
         <ReferenceDot x={peak.t} y={peak.m} r={6} fill="var(--star)" stroke="var(--surface)" strokeWidth={2}
           label={{
