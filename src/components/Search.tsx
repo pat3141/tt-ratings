@@ -46,7 +46,7 @@ export function PlayerSearchBox({ ds, onPick, placeholder = 'Search players…',
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
-  const raw = useResults(ds, q, 12);
+  const raw = useResults(ds, q, 30);
   const results = useMemo(() => raw.filter((p) => !exclude.includes(p.id)), [raw, exclude]);
   const pick = (p: Player) => {
     (onPick ?? ((x) => nav(`/player/${x.id}`)))(p);
