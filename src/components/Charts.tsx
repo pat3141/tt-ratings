@@ -49,6 +49,11 @@ function niceDomain([lo, hi]: [number, number]): [number, number] {
 
 // ---------- single player ----------
 
+function peakPos(t: number, min: number, max: number): 'top' | 'left' | 'right' {
+  const f = max > min ? (t - min) / (max - min) : 0.5;
+  return f > 0.85 ? 'left' : f < 0.08 ? 'right' : 'top';
+}
+
 interface Pt { t: number; m: number; s: number; band: [number, number]; n: string; pc: number; im: number }
 
 export function RatingHistoryChart({ history, range, showBand, height = 320 }: {
@@ -97,7 +102,11 @@ export function RatingHistoryChart({ history, range, showBand, height = 320 }: {
           dot={data.length <= 60 ? { r: 3, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 } : false}
           activeDot={{ r: 6, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }} />
         <ReferenceDot x={peak.t} y={peak.m} r={6} fill="var(--star)" stroke="var(--surface)" strokeWidth={2}
-          label={{ value: `Peak ${peak.m}`, position: 'top', fill: 'var(--ink-2)', fontSize: 12, fontWeight: 600 }} />
+          label={{
+            value: `${range === 'all' ? 'Peak' : 'High'} ${peak.m}`, fontSize: 12, fontWeight: 600, fill: 'var(--ink-2)',
+            // keep the label inside the plot when the peak sits near either edge
+            position: peakPos(peak.t, data[0].t, data.at(-1)!.t),
+          }} />
       </ComposedChart>
     </ResponsiveContainer>
   );

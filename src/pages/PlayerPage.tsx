@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RangePicker, RatingHistoryChart, type Range } from '../components/Charts';
-import { Avatar, CompareButton, Delta, Icon, Loading, StarButton, Stat, cmp, useSort } from '../components/ui';
+import { Avatar, CompareButton, MeButton, Delta, Icon, Loading, StarButton, Stat, cmp, useSort } from '../components/ui';
 import { loadPlayer, rcPlayerUrl, useDataset, type Dataset, type MatchRow, type PlayerDetail } from '../lib/data';
 import { displayName, fmtDate, fmtMonth, isActive, relative, winPct } from '../lib/format';
 
@@ -296,7 +296,8 @@ export default function PlayerPage() {
           </div>
         </div>
         <div className="row wrap" style={{ marginTop: 16, gap: 8 }}>
-          <StarButton id={p.id} />
+          <MeButton id={p.id} />
+          <StarButton id={p.id} rating={p.rating} label />
           <CompareButton id={p.id} />
           <a className="btn" href={rcPlayerUrl(p.id)} target="_blank" rel="noreferrer"><Icon name="external" size={15} />Ratings Central</a>
         </div>

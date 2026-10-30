@@ -12,6 +12,7 @@ const NAV = [
   { to: '/compare', label: 'Compare', icon: 'compare' },
   { to: '/events', label: 'Events', icon: 'calendar' },
   { to: '/clubs', label: 'Clubs', icon: 'club' },
+  { to: '/me', label: 'My page', icon: 'user' },
 ];
 
 function ThemeToggle() {

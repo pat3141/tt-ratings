@@ -88,7 +88,7 @@ export default function Players() {
             onChange={(e) => set('min', e.target.value.replace(/\D/g, ''))} aria-label="Minimum rating" />
           <input className="input num" style={{ width: 82 }} placeholder="Max" inputMode="numeric" value={maxR}
             onChange={(e) => set('max', e.target.value.replace(/\D/g, ''))} aria-label="Maximum rating" />
-          <label className="toggle"><input type="checkbox" checked={onlyStarred} onChange={(e) => set('starred', e.target.checked ? '1' : '')} />Starred</label>
+          <label className="toggle"><input type="checkbox" checked={onlyStarred} onChange={(e) => set('starred', e.target.checked ? '1' : '')} />Watchlist</label>
         </div>
       </div>
 
@@ -112,7 +112,7 @@ export default function Players() {
             <tbody>
               {rows.slice(0, limit).map((p) => (
                 <tr key={p.id} className="clickable" onClick={() => nav(`/player/${p.id}`)}>
-                  <td style={{ paddingRight: 0 }}><StarButton id={p.id} /></td>
+                  <td style={{ paddingRight: 0 }}><StarButton id={p.id} rating={p.rating} /></td>
                   <td><PlayerCell p={p} ds={ds} /></td>
                   <td className="r"><Rating p={p} /></td>
                   <td className="r"><Delta v={p.ch12} /></td>

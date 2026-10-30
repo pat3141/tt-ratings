@@ -96,13 +96,6 @@ async function readJSON(file, fallback) {
 await fs.mkdir(PLAYER_DIR, { recursive: true });
 
 console.log(`Region: ${region.name}`);
-console.log('Fetching player list…');
-const playerRows = parseCSV(await get(`${BASE}/PlayerList.php?${qs({
-  PlayerSport: 'Any', PlayerCountry: region.country, PlayerProvince: region.province,
-  SortOrder: 'Rating', CSV_Output: 'Text',
-})}`));
-console.log(`  ${playerRows.length} players`);
-
 console.log('Fetching clubs…');
 const clubRows = parseCSV(await get(`${BASE}/ClubList.php?${qs({
   ClubSport: 'Any', ClubCountry: region.country, CSV_Output: 'Text',
@@ -111,6 +104,24 @@ const clubs = Object.fromEntries(clubRows.map((c) => [c.ID, {
   id: Number(c.ID), name: c.Name, short: c.Nickname || '', city: c.City, province: c.Province,
   website: c.Website || '', active: c.Status === 'Active',
 }]));
+
+// Players registered in the region, plus anyone whose primary club is in the region
+// (people often keep an interstate address on their Ratings Central record).
+console.log('Fetching player list…');
+const byId = new Map();
+const addRows = (rows) => { for (const r of rows) if (!byId.has(r.ID)) byId.set(r.ID, r); };
+addRows(parseCSV(await get(`${BASE}/PlayerList.php?${qs({
+  PlayerSport: 'Any', PlayerCountry: region.country, PlayerProvince: region.province,
+  SortOrder: 'Rating', CSV_Output: 'Text',
+})}`)));
+const regionClubs = clubRows.filter((c) => c.Province === region.province);
+for (const c of regionClubs) {
+  await sleep(DELAY_MS);
+  addRows(parseCSV(await get(`${BASE}/PlayerList.php?${qs({ PlayerSport: 'Any', ClubID: c.ID, SortOrder: 'Rating', CSV_Output: 'Text' })}`)));
+}
+const playerRows = [...byId.values()].sort((a, b) => (num(b.Rating) ?? -1) - (num(a.Rating) ?? -1));
+playerRows.forEach((r, i) => { r.Rank = String(i + 1); });
+console.log(`  ${playerRows.length} players (region + ${regionClubs.length} local clubs)`);
 
 // A detail file records the LastEvent it was built from; refetch only when that changed.
 const toFetch = [];

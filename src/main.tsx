@@ -6,6 +6,7 @@ import Compare from './pages/Compare';
 import { ClubPage, Clubs } from './pages/Clubs';
 import { EventPage, Events } from './pages/Events';
 import Home from './pages/Home';
+import MyPage from './pages/MyPage';
 import PlayerPage from './pages/PlayerPage';
 import Players from './pages/Players';
 import './styles.css';
@@ -22,6 +23,7 @@ const router = createHashRouter([
       { path: '/events', element: <Events /> },
       { path: '/event/:id', element: <EventPage /> },
       { path: '/clubs', element: <Clubs /> },
+      { path: '/me', element: <MyPage /> },
       { path: '/club/:id', element: <ClubPage /> },
       { path: '*', element: <Home /> },
     ],

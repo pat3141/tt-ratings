@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Dataset, Player } from '../lib/data';
 import { displayName, initials, signed } from '../lib/format';
-import { compareTray, starred, useList, MAX_COMPARE } from '../lib/store';
+import { compareTray, me as meStore, starred, unwatch, useList, useStore, watch, MAX_COMPARE } from '../lib/store';
 
 const paths: Record<string, ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
@@ -20,6 +20,9 @@ const paths: Record<string, ReactNode> = {
   external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>,
   up: <path d="m6 15 6-6 6 6" />,
   down: <path d="m6 9 6 6 6-6" />,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" /></>,
+  link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
+  bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z" /><path d="M10 21h4" /></>,
   trophy: <><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6" /></>,
 };
 
@@ -73,13 +76,34 @@ export function Sparkline({ data, width = 90, height = 26 }: { data: number[]; w
   );
 }
 
-export function StarButton({ id }: { id: number }) {
+/** Watchlist toggle. Icon-only by default; `label` shows a full button (player page). */
+export function StarButton({ id, rating, label }: { id: number; rating: number | null; label?: boolean }) {
   const list = useList(starred);
   const on = list.includes(id);
+  const toggle = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); if (on) unwatch(id); else watch(id, rating); };
+  if (label) {
+    return (
+      <button className={`btn ${on ? 'on' : ''}`} onClick={toggle} aria-pressed={on}>
+        <span style={{ color: on ? 'var(--star)' : undefined, lineHeight: 0 }}><Icon name="star" size={16} fill={on} /></span>
+        {on ? 'Watching' : 'Watch'}
+      </button>
+    );
+  }
   return (
-    <button className={`star ${on ? 'on' : ''}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); starred.toggle(id); }}
-      title={on ? 'Unstar' : 'Star player'} aria-pressed={on}>
+    <button className={`star ${on ? 'on' : ''}`} onClick={toggle} title={on ? 'Remove from watchlist' : 'Add to watchlist'} aria-pressed={on}>
       <Icon name="star" size={17} fill={on} />
+    </button>
+  );
+}
+
+/** Claim (or unclaim) a player as "me". */
+export function MeButton({ id }: { id: number }) {
+  const mine = useStore(meStore);
+  const on = mine === id;
+  return (
+    <button className={`btn ${on ? 'on' : ''}`} onClick={() => meStore.set(on ? null : id)} aria-pressed={on}
+      title={on ? 'Unlink this profile' : 'Save as my profile'}>
+      <Icon name={on ? 'check' : 'user'} size={15} />{on ? 'My profile' : 'This is me'}
     </button>
   );
 }

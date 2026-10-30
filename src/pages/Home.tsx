@@ -2,15 +2,16 @@ import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DistributionChart } from '../components/Charts';
 import { PlayerSearchBox } from '../components/Search';
-import { Delta, Loading, PlayerCell, Rating, Sparkline, Stat } from '../components/ui';
+import { Delta, Icon, Loading, PlayerCell, Rating, Sparkline, Stat } from '../components/ui';
 import { useDataset, useEvents } from '../lib/data';
 import { fmtDate, isActive, relative } from '../lib/format';
-import { starred, useList } from '../lib/store';
+import { me, starred, useList, useStore } from '../lib/store';
 
 export default function Home() {
   const ds = useDataset();
   const ev = useEvents();
   const stars = useList(starred);
+  const myId = useStore(me);
   const nav = useNavigate();
 
   const s = useMemo(() => {
@@ -25,7 +26,39 @@ export default function Home() {
 
   if (!ds || !s) return <div className="stack"><Loading h={140} /><Loading h={320} /></div>;
 
-  const starredPlayers = stars.map((id) => ds.byId.get(id)).filter((p) => !!p);
+  const mine = myId != null ? ds.byId.get(myId) : undefined;
+  const watched = stars.map((id) => ds.byId.get(id)).filter((p) => !!p);
+
+  function MyStrip() {
+    if (!mine && !watched.length) {
+      return (
+        <Link to="/me" className="card row wrap" style={{ gap: 14, background: 'linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--surface)' }}>
+          <div className="avatar" style={{ background: 'var(--accent)' }}><Icon name="user" size={18} /></div>
+          <div style={{ flex: '1 1 240px' }}>
+            <b>Save your profile &amp; build a watchlist</b>
+            <div className="small ink2">See your rating at a glance, follow friends and rivals, and get “new results” alerts.</div>
+          </div>
+          <span className="btn primary">Get started</span>
+        </Link>
+      );
+    }
+    return (
+      <div className="card flush">
+        <div className="card-head"><h2>{mine ? 'You & your watchlist' : '★ Your watchlist'}</h2><span className="spacer" /><Link to="/me" className="link small">My page →</Link></div>
+        <div style={{ marginTop: 10 }}>
+          {[...(mine ? [mine] : []), ...watched.filter((p) => p.id !== mine?.id)].slice(0, 8).map((p) => (
+            <Link key={p.id} to={`/player/${p.id}`} className="list-item">
+              <PlayerCell p={p} ds={ds!} sub={p.id === mine?.id ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>You · played {relative(p.lastPlayed)}</span> : `played ${relative(p.lastPlayed)}`} />
+              <span className="spacer" />
+              <span className="hide-sm"><Sparkline data={p.spark} /></span>
+              <Delta v={p.ch12} />
+              <Rating p={p} />
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="stack" style={{ gap: 24 }}>
@@ -48,22 +81,7 @@ export default function Home() {
         <Stat label="Last updated" value={<span style={{ fontSize: 22 }}>{relative(ds.meta.updated.slice(0, 10))}</span>} foot={fmtDate(ds.meta.updated.slice(0, 10))} />
       </div>
 
-      {starredPlayers.length > 0 && (
-        <div className="card flush">
-          <div className="card-head"><h2>★ Your players</h2><span className="sub">starred on this device</span></div>
-          <div style={{ marginTop: 10 }}>
-            {starredPlayers.map((p) => (
-              <Link key={p.id} to={`/player/${p.id}`} className="list-item">
-                <PlayerCell p={p} ds={ds} sub={`played ${relative(p.lastPlayed)}`} />
-                <span className="spacer" />
-                <span className="hide-sm"><Sparkline data={p.spark} /></span>
-                <Delta v={p.ch12} />
-                <Rating p={p} />
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      <MyStrip />
 
       <div className="grid grid-2">
         <div className="card flush">
