@@ -61,8 +61,20 @@ export interface Events { list: EventInfo[]; byId: Map<number, EventInfo> }
 
 const url = (p: string) => `${import.meta.env.BASE_URL}data/${p}`;
 
+// meta.json is always revalidated; its timestamp versions every other data file,
+// so a fresh deploy is picked up immediately instead of after the 10-minute Pages cache.
+let versionPromise: Promise<Meta> | null = null;
+function meta(): Promise<Meta> {
+  versionPromise ??= fetch(url('meta.json'), { cache: 'no-cache' }).then((r) => {
+    if (!r.ok) throw new Error('Failed to load meta.json');
+    return r.json();
+  });
+  return versionPromise;
+}
+
 async function json<T>(p: string): Promise<T> {
-  const res = await fetch(url(p));
+  const { updated } = await meta();
+  const res = await fetch(`${url(p)}?v=${encodeURIComponent(updated)}`);
   if (!res.ok) throw new Error(`Failed to load ${p}`);
   return res.json();
 }
@@ -71,7 +83,7 @@ let datasetPromise: Promise<Dataset> | null = null;
 
 export function loadDataset(): Promise<Dataset> {
   datasetPromise ??= Promise.all([
-    json<Meta>('meta.json'),
+    meta(),
     json<{ players: Player[] }>('players.json'),
     json<Club[]>('clubs.json'),
   ]).then(([meta, { players }, clubs]) => ({
@@ -83,7 +95,6 @@ export function loadDataset(): Promise<Dataset> {
   return datasetPromise;
 }
 
-// events.json is large, so it is only fetched by pages that show events.
 let eventsPromise: Promise<Events> | null = null;
 
 export function loadEvents(): Promise<Events> {
