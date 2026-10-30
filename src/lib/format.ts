@@ -20,12 +20,22 @@ export const toTime = (d: string) => new Date(d + 'T00:00:00').getTime();
 
 export function relative(d: string | null): string {
   if (!d) return 'never';
-  const days = Math.round((Date.now() - toTime(d)) / 864e5);
+  const days = Math.floor((Date.now() - toTime(d)) / 864e5);
   if (days < 1) return 'today';
   if (days < 31) return `${days}d ago`;
   if (days < 365) return `${Math.round(days / 30.4)}mo ago`;
   const y = days / 365.25;
   return `${y < 10 ? y.toFixed(1).replace(/\.0$/, '') : Math.round(y)}y ago`;
+}
+
+/** "just now" / "3h ago" / "2d ago" for a full ISO timestamp. */
+export function since(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
 }
 
 export const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);

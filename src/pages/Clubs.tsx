@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DistributionChart } from '../components/Charts';
-import { CompareButton, Delta, Icon, Loading, PlayerCell, Rating, Sparkline, Stat, cmp, useSort } from '../components/ui';
+import { Avatar, CompareButton, Delta, Icon, Loading, MRow, PlayerCell, Rating, Sparkline, Stat, cmp, useMobile, useSort } from '../components/ui';
 import { useDataset, type Dataset, type Player } from '../lib/data';
 import { displayName, isActive, relative } from '../lib/format';
 
@@ -54,6 +54,7 @@ export function ClubPage() {
   const ds = useDataset();
   const nav = useNavigate();
   const { sort, th } = useSort<Key>('rating');
+  const mobile = useMobile();
   const s = useMemo(() => (ds ? clubStats(ds).find((x) => x.c.id === id) : undefined), [ds, id]);
 
   if (ds && !s) return <div className="card"><h2>Club not found</h2></div>;
@@ -85,6 +86,14 @@ export function ClubPage() {
         </div>
       )}
       <div className="card flush">
+        {mobile ? (
+          <div className="mlist">
+            {rows.map((p) => (
+              <MRow key={p.id} onClick={() => nav(`/player/${p.id}`)} lead={<Avatar p={p} />} title={displayName(p.name)}
+                meta={`played ${relative(p.lastPlayed)}`} side={<><Rating p={p} /><Delta v={p.ch12} /></>} />
+            ))}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table>
             <thead><tr><th>Player</th>{th('rating', 'Rating', 'r')}{th('ch12', '12 mo', 'r')}<th className="hide-sm">Trend</th>{th('events', 'Events', 'r hide-sm')}{th('lastPlayed', 'Last played', 'r hide-sm')}<th className="hide-md" /></tr></thead>
@@ -103,6 +112,7 @@ export function ClubPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

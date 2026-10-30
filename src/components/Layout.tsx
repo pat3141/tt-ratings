@@ -4,7 +4,7 @@ import { useDataset } from '../lib/data';
 import { fmtDate } from '../lib/format';
 import { compareTray, useList } from '../lib/store';
 import { CommandPalette } from './Search';
-import { Avatar, Icon } from './ui';
+import { Avatar, Icon, useMobile } from './ui';
 
 const NAV = [
   { to: '/', label: 'Home', icon: 'home', end: true },
@@ -15,21 +15,57 @@ const NAV = [
   { to: '/me', label: 'My page', icon: 'user' },
 ];
 
-function ThemeToggle() {
-  const [dark, setDark] = useState(() =>
-    document.documentElement.dataset.theme
-      ? document.documentElement.dataset.theme === 'dark'
-      : matchMedia('(prefers-color-scheme: dark)').matches);
-  const flip = () => {
-    const t = dark ? 'light' : 'dark';
-    document.documentElement.dataset.theme = t;
-    try { localStorage.setItem('theme', t); } catch { /* ignore */ }
-    setDark(!dark);
-  };
+type Theme = 'light' | 'dark' | 'system';
+
+function applyTheme(t: Theme) {
+  const root = document.documentElement;
+  if (t === 'system') delete root.dataset.theme; else root.dataset.theme = t;
+  try { localStorage.setItem('theme', t); } catch { /* ignore */ }
+}
+
+/** Light / Dark / Auto switch. Desktop shows all three; phones get one button that cycles. */
+function ThemeToggle({ compact }: { compact: boolean }) {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') return t; } catch { /* ignore */ }
+    return 'system';
+  });
+  const set = (t: Theme) => { applyTheme(t); setTheme(t); };
+  const opts: { t: Theme; icon: string; label: string }[] = [
+    { t: 'light', icon: 'sun', label: 'Light theme' },
+    { t: 'dark', icon: 'moon', label: 'Dark theme' },
+    { t: 'system', icon: 'auto', label: 'Match system theme' },
+  ];
+  if (compact) {
+    const cur = opts.find((o) => o.t === theme)!;
+    const next = opts[(opts.indexOf(cur) + 1) % opts.length];
+    return (
+      <button className="icon-btn" onClick={() => set(next.t)} aria-label={`${cur.label} (tap for ${next.label.toLowerCase()})`} title={cur.label}>
+        <Icon name={cur.icon} />
+      </button>
+    );
+  }
   return (
-    <button className="icon-btn" onClick={flip} title={dark ? 'Light mode' : 'Dark mode'} aria-label="Toggle theme">
-      <Icon name={dark ? 'sun' : 'moon'} />
-    </button>
+    <div className="theme-seg" role="radiogroup" aria-label="Theme">
+      {opts.map((o) => (
+        <button key={o.t} className={theme === o.t ? 'on' : ''} onClick={() => set(o.t)} role="radio" aria-checked={theme === o.t} title={o.label} aria-label={o.label}>
+          <Icon name={o.icon} size={16} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Logo() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="var(--accent)" /><stop offset="1" stopColor="#e34948" /></linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="9" fill="url(#lg)" />
+      <circle cx="14" cy="14" r="7.5" fill="#fff" fillOpacity=".95" />
+      <rect x="18.5" y="18.5" width="3.6" height="9" rx="1.8" transform="rotate(-45 20.3 23)" fill="#fff" fillOpacity=".95" />
+      <circle cx="24.5" cy="8" r="2.6" fill="#ffd166" />
+    </svg>
   );
 }
 
@@ -52,6 +88,7 @@ function CompareTray() {
 
 export default function Layout() {
   const ds = useDataset();
+  const mobile = useMobile();
   const [palette, setPalette] = useState(false);
   const { pathname } = useLocation();
 
@@ -73,7 +110,7 @@ export default function Layout() {
       <header className="topbar">
         <div className="container">
           <Link to="/" className="brand">
-            <span className="brand-mark">🏓</span>
+            <span className="brand-mark"><Logo /></span>
             <span>Rally<small>{ds?.meta.region ?? ''} ratings</small></span>
           </Link>
           <nav className="nav">
@@ -84,7 +121,7 @@ export default function Layout() {
             <Icon name="search" size={16} /><span style={{ flex: 1, textAlign: 'left' }}>Search players</span>
             <span className="hint"><kbd>⌘</kbd> <kbd>K</kbd></span>
           </button>
-          <ThemeToggle />
+          <ThemeToggle compact={mobile} />
         </div>
       </header>
 

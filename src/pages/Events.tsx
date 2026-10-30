@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Delta, Icon, Loading, PlayerCell, Stat, cmp, useSort } from '../components/ui';
+import { Avatar, Delta, Icon, Loading, MRow, PlayerCell, Stat, cmp, useMobile, useSort } from '../components/ui';
+import { displayName } from '../lib/format';
 import { rcEventUrl, useDataset, useEvents } from '../lib/data';
 import { fmtDate } from '../lib/format';
 
@@ -11,6 +12,7 @@ export function Events() {
   const [q, setQ] = useState('');
   const [year, setYear] = useState('');
   const [limit, setLimit] = useState(60);
+  const mobile = useMobile();
 
   const years = useMemo(() => [...new Set(ev?.list.map((e) => e.date.slice(0, 4)))], [ev]);
   const rows = useMemo(() => (ev?.list ?? []).filter((e) =>
@@ -35,6 +37,15 @@ export function Events() {
         </div>
       </div>
       <div className="card flush">
+        {mobile ? (
+          <div className="mlist">
+            {rows.slice(0, limit).map((e) => (
+              <MRow key={e.id} onClick={() => nav(`/event/${e.id}`)} titleClass="pname clamp2" title={e.name}
+                meta={`${fmtDate(e.date)} · ${e.players.length} ${e.players.length === 1 ? 'player' : 'players'}`}
+                side={e.players[0] && e.players[0].pc > 0 ? <Delta v={e.players[0].pc} /> : undefined} />
+            ))}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table>
             <thead><tr><th>Date</th><th>Event</th><th className="r">Players</th><th className="hide-sm">Biggest gain</th></tr></thead>
@@ -54,6 +65,7 @@ export function Events() {
             </tbody>
           </table>
         </div>
+        )}
         {rows.length > limit && <div style={{ padding: 14, textAlign: 'center', borderTop: '1px solid var(--border)' }}>
           <button className="btn" onClick={() => setLimit(limit + 100)}>Show more</button></div>}
       </div>
@@ -68,6 +80,7 @@ export function EventPage() {
   const ds = useDataset();
   const nav = useNavigate();
   const { sort, th } = useSort<Key>('pc');
+  const mobile = useMobile();
   const ev = useEvents();
   const e = ev?.byId.get(id);
 
@@ -95,6 +108,17 @@ export function EventPage() {
         <Stat label="Players who gained" value={`${gains}`} foot={`${Math.round((100 * gains) / e.players.length)}% of field`} />
       </div>
       <div className="card flush">
+        {mobile ? (
+          <div className="mlist">
+            {rows.map((r) => {
+              const p = ds.byId.get(r.id)!;
+              return (
+                <MRow key={r.id} onClick={() => nav(`/player/${r.id}`)} lead={<Avatar p={p} />} title={displayName(p.name)}
+                  meta={`${r.im} → ${r.m}`} side={<Delta v={r.pc} />} />
+              );
+            })}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table>
             <thead><tr><th>Player</th>{th('im', 'Before', 'r hide-sm')}{th('m', 'After', 'r')}{th('pc', 'Change', 'r')}<th className="hide-sm" style={{ width: '30%' }} /></tr></thead>
@@ -122,6 +146,7 @@ export function EventPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
       <p className="small muted">Showing {ds.meta.region} players only. Opponents from other regions appear on Ratings Central.</p>
     </div>

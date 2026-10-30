@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RangePicker, RatingHistoryChart, type Range } from '../components/Charts';
-import { Avatar, CompareButton, MeButton, Delta, Icon, Loading, StarButton, Stat, cmp, useSort } from '../components/ui';
+import { Avatar, CompareButton, MeButton, Delta, Icon, Loading, MRow, SortSelect, StarButton, Stat, cmp, useMobile, useSort } from '../components/ui';
 import { loadPlayer, rcPlayerUrl, useDataset, type Dataset, type MatchRow, type PlayerDetail } from '../lib/data';
 import { displayName, fmtDate, fmtMonth, isActive, relative, winPct } from '../lib/format';
 
@@ -29,6 +29,20 @@ function ScoreChips({ sc }: { sc: string }) {
 }
 
 function MatchTable({ ds, matches, showEvent = true }: { ds: Dataset; matches: MatchRow[]; showEvent?: boolean }) {
+  const mobile = useMobile();
+  const nav = useNavigate();
+  if (mobile) {
+    return (
+      <div className="mlist">
+        {matches.map((m, i) => (
+          <MRow key={i} onClick={ds.byId.has(m.o) ? () => nav(`/player/${m.o}`) : undefined}
+            title={displayName(m.on)}
+            meta={<>{showEvent && `${fmtDate(m.d)} · `}{m.om} · <ScoreChips sc={m.sc} /></>}
+            side={<><span className={`badge ${m.w ? 'w' : 'l'}`}>{m.w ? 'Won' : 'Lost'}</span><Delta v={m.pc} /></>} />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="table-wrap">
       <table>
@@ -63,6 +77,32 @@ function EventsTab({ ds, d }: { ds: Dataset; d: PlayerDetail }) {
     return m;
   }, [d]);
   const rows = [...d.history].reverse();
+  const mobile = useMobile();
+  if (mobile) {
+    return (
+      <div className="mlist">
+        {rows.map((h) => {
+          const ms = byEvent.get(h.e) ?? [];
+          const w = ms.filter((m) => m.w).length;
+          const isOpen = open === h.e;
+          return (
+            <div key={h.e}>
+              <MRow onClick={() => setOpen(isOpen ? null : h.e)} titleClass="pname clamp2"
+                title={<>{h.n} <span className="muted small">{ms.length ? (isOpen ? '▾' : '▸') : ''}</span></>}
+                meta={`${fmtDate(h.d)}${ms.length ? ` · ${w}–${ms.length - w}` : ''}`}
+                side={<><span><span className="rating">{h.m}</span><span className="sd">±{h.s}</span></span><Delta v={h.pc} /></>} />
+              {isOpen && (
+                <div className="mrow-sub">
+                  {ms.length ? <MatchTable ds={ds} matches={ms} showEvent={false} /> : <div className="muted small" style={{ padding: 12 }}>No match details.</div>}
+                  <div style={{ padding: '8px 24px' }}><Link className="link small" to={`/event/${h.e}`}>View event →</Link></div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div className="table-wrap">
       <table>
@@ -129,7 +169,8 @@ type OppKey = 'n' | 'w' | 'pct' | 'last' | 'rating' | 'name' | 'pts';
 
 function OpponentsTab({ ds, d }: { ds: Dataset; d: PlayerDetail }) {
   const nav = useNavigate();
-  const { sort, th } = useSort<OppKey>('n');
+  const { sort, th, setSort } = useSort<OppKey>('n');
+  const mobile = useMobile();
   const opps = useMemo(() => {
     const m = new Map<number, Opp>();
     for (const x of d.matches) {
@@ -142,6 +183,26 @@ function OpponentsTab({ ds, d }: { ds: Dataset; d: PlayerDetail }) {
   }, [d, ds]);
   const val = (o: Opp) => (sort.key === 'pct' ? o.w / o.n : sort.key === 'name' ? displayName(o.name) : o[sort.key]);
   const rows = [...opps].sort((a, b) => cmp(val(a), val(b), sort.dir) || b.n - a.n);
+  if (mobile) {
+    return (
+      <>
+        <div style={{ padding: 12 }}>
+          <SortSelect value={sort} onChange={setSort} options={[
+            ['n', 'Most played'], ['pct', 'Win %'], ['rating', 'Rating'], ['last', 'Last met'], ['pts', 'Net points'], ['name', 'Name', 1],
+          ]} />
+        </div>
+        <div className="mlist" style={{ borderTop: '1px solid var(--border)' }}>
+          {rows.map((o) => (
+            <MRow key={o.id} onClick={ds.byId.has(o.id) ? () => nav(`/player/${o.id}`) : () => open(rcPlayerUrl(o.id), '_blank')}
+              title={displayName(o.name)}
+              meta={`${o.rating ?? '—'} · ${o.n} played · ${fmtMonth(o.last)}`}
+              side={<><span className={`badge ${o.w * 2 > o.n ? 'w' : o.w * 2 < o.n ? 'l' : ''}`}>{o.w}–{o.n - o.w}</span>
+                <span className="small muted num">{Math.round((100 * o.w) / o.n)}%</span></>} />
+          ))}
+        </div>
+      </>
+    );
+  }
   return (
     <div className="table-wrap">
       <table>
@@ -247,6 +308,12 @@ function HighlightsTab({ ds, d }: { ds: Dataset; d: PlayerDetail }) {
 
 // ---------- page ----------
 
+/** Banner colours derived from the same hue as the player's avatar. */
+const bannerStyle = (id: number) => {
+  const hue = (id * 137.508) % 360;
+  return { '--banner-a': `hsl(${hue} 45% 50%)`, '--banner-b': `hsl(${(hue + 50) % 360} 50% 36%)` } as React.CSSProperties;
+};
+
 const TABS = ['Events', 'Matches', 'Opponents', 'Highlights'] as const;
 
 export default function PlayerPage() {
@@ -257,6 +324,7 @@ export default function PlayerPage() {
   const [range, setRange] = useState<Range>('all');
   const [band, setBand] = useState(true);
   const [tab, setTab] = useState<(typeof TABS)[number]>('Events');
+  const mobile = useMobile();
 
   useEffect(() => {
     setD(null); setErr(false); setTab('Events');
@@ -275,7 +343,8 @@ export default function PlayerPage() {
 
   return (
     <div className="stack" style={{ gap: 20 }}>
-      <div className="card">
+      <div className="card player-card">
+        <div className="banner" style={bannerStyle(p.id)} />
         <div className="hero-player">
           <Avatar p={p} size="lg" />
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>
@@ -288,7 +357,7 @@ export default function PlayerPage() {
               {!isActive(p) && <span className="badge">Inactive · last played {relative(p.lastPlayed)}</span>}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="rating-block" style={{ textAlign: 'right' }}>
             <div className="big-rating num">{p.rating ?? '—'}</div>
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: 6 }}>
               <span className="muted small">±{p.sd}</span><Delta v={p.ch12} /><span className="small muted">12 mo</span>
@@ -317,7 +386,7 @@ export default function PlayerPage() {
           <label className="toggle small"><input type="checkbox" checked={band} onChange={(e) => setBand(e.target.checked)} />Uncertainty band</label>
           <RangePicker value={range} onChange={setRange} />
         </div>
-        {d ? <RatingHistoryChart history={d.history} range={range} showBand={band} /> : err ? <p className="muted">Couldn’t load history.</p> : <Loading h={320} />}
+        {d ? <RatingHistoryChart history={d.history} range={range} showBand={band} height={mobile ? 250 : 320} /> : err ? <p className="muted">Couldn’t load history.</p> : <Loading h={320} />}
         {band && <p className="small muted" style={{ margin: '8px 0 0' }}>Shaded band shows rating ± one standard deviation — narrower means Ratings Central is more confident.</p>}
       </div>
 

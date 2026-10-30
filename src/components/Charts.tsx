@@ -42,9 +42,17 @@ export function RangePicker({ value, onChange }: { value: Range; onChange: (r: R
   );
 }
 
-function niceDomain([lo, hi]: [number, number]): [number, number] {
-  const pad = Math.max(40, (hi - lo) * 0.08);
-  return [Math.floor((lo - pad) / 50) * 50, Math.ceil((hi + pad) / 50) * 50];
+const yScale = ({ domain, ticks }: ReturnType<typeof niceScale>) => ({ domain, ticks, interval: 0 as const });
+
+/** Rating axis with ~5 evenly spaced round ticks; the domain ends exactly on a tick so labels never crowd. */
+function niceScale(lo: number, hi: number): { domain: [number, number]; ticks: number[] } {
+  const pad = Math.max(20, (hi - lo) * 0.06);
+  const a = lo - pad, b = hi + pad;
+  const step = [25, 50, 100, 150, 200, 250, 500].find((st) => (b - a) / st <= 5) ?? 1000;
+  const start = Math.floor(a / step) * step, end = Math.ceil(b / step) * step;
+  const ticks: number[] = [];
+  for (let t = start; t <= end; t += step) ticks.push(t);
+  return { domain: [start, end], ticks };
 }
 
 // ---------- single player ----------
@@ -81,7 +89,7 @@ export function RatingHistoryChart({ history, range, showBand, height = 320 }: {
         <CartesianGrid vertical={false} stroke="var(--grid)" />
         <XAxis dataKey="t" type="number" scale="time" domain={['dataMin', 'dataMax']} {...axisProps}
           ticks={tt.ticks} tickFormatter={tt.fmt} />
-        <YAxis domain={niceDomain([lo, hi])} {...axisProps} axisLine={false} width={52} allowDecimals={false} />
+        <YAxis {...yScale(niceScale(lo, hi))} {...axisProps} axisLine={false} width={46} allowDecimals={false} />
         <Tooltip cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} content={({ active, payload }) => {
           const p = payload?.[0]?.payload as Pt | undefined;
           if (!active || !p) return null;
@@ -159,7 +167,7 @@ export function CompareChart({ players, histories, mode, range, height = 380 }: 
           <XAxis dataKey="x" type="number" domain={['dataMin', 'dataMax']} {...axisProps} minTickGap={36}
             scale={mode === 'date' ? 'time' : 'linear'} ticks={mode === 'date' ? tt.ticks : undefined}
             tickFormatter={mode === 'date' ? tt.fmt : (v: number) => `${Math.round(v * 10) / 10}y`} />
-          <YAxis domain={niceDomain([Math.min(...all), Math.max(...all)])} {...axisProps} axisLine={false} width={52} />
+          <YAxis {...yScale(niceScale(Math.min(...all), Math.max(...all)))} {...axisProps} axisLine={false} width={46} />
           <Tooltip cursor={{ stroke: 'var(--axis)', strokeDasharray: '3 3' }} content={({ active, label }) => {
             if (!active || label == null) return null;
             const x = Number(label);

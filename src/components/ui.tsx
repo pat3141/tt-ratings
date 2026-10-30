@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Dataset, Player } from '../lib/data';
 import { displayName, initials, signed } from '../lib/format';
@@ -13,6 +13,7 @@ const paths: Record<string, ReactNode> = {
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
   club: <><path d="M4 21V8l8-5 8 5v13" /><path d="M9 21v-6h6v6" /></>,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  auto: <><circle cx="12" cy="12" r="8" /><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" /></>,
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />,
   x: <path d="M6 6l12 12M18 6 6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
@@ -158,7 +159,46 @@ export function useSort<K extends string>(initial: K, initialDir: 1 | -1 = -1) {
       {label}{sort.key === key ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   );
-  return { sort, th };
+  return { sort, th, setSort };
+}
+
+const MOBILE_Q = '(max-width: 640px)';
+/** True on phone-width screens; tables switch to compact list rows. */
+export function useMobile(): boolean {
+  const [m, setM] = useState(() => matchMedia(MOBILE_Q).matches);
+  useEffect(() => {
+    const mq = matchMedia(MOBILE_Q);
+    const f = () => setM(mq.matches);
+    mq.addEventListener('change', f);
+    return () => mq.removeEventListener('change', f);
+  }, []);
+  return m;
+}
+
+/** Sort picker for mobile lists, where there are no table headers to tap. */
+export function SortSelect<K extends string>({ value, options, onChange }: {
+  value: { key: K; dir: 1 | -1 }; options: [K, string, (1 | -1)?][]; onChange: (s: { key: K; dir: 1 | -1 }) => void;
+}) {
+  return (
+    <select className="select" aria-label="Sort by" value={value.key}
+      onChange={(e) => { const o = options.find(([k]) => k === e.target.value)!; onChange({ key: o[0], dir: o[2] ?? -1 }); }}>
+      {options.map(([k, label]) => <option key={k} value={k}>Sort: {label}</option>)}
+    </select>
+  );
+}
+
+/** Generic mobile row: optional leading avatar, title + meta, and a right-hand column. */
+export function MRow({ lead, title, meta, side, onClick, titleClass = 'pname' }: {
+  lead?: ReactNode; title: ReactNode; meta?: ReactNode; side?: ReactNode; onClick?: () => void; titleClass?: string;
+}) {
+  return (
+    <div className="mrow" onClick={onClick} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter') onClick(); } : undefined}>
+      {lead}
+      <div className="mrow-main"><span className={titleClass}>{title}</span>{meta != null && <div className="meta">{meta}</div>}</div>
+      {side != null && <div className="mrow-side">{side}</div>}
+    </div>
+  );
 }
 
 /** Compare helper: nulls always sort last. */

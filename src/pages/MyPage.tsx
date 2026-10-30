@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { RangePicker, RatingHistoryChart, type Range } from '../components/Charts';
 import { PlayerSearchBox } from '../components/Search';
-import { Avatar, Delta, Icon, Loading, PlayerCell, Rating, Sparkline, StarButton, cmp, useSort } from '../components/ui';
+import { Avatar, Delta, Icon, Loading, MRow, PlayerCell, Rating, Sparkline, StarButton, cmp, useMobile, useSort } from '../components/ui';
 import { loadPlayer, useDataset, type Dataset, type Player, type PlayerDetail } from '../lib/data';
 import { displayName, fmtDate, isActive, relative } from '../lib/format';
 import {
@@ -89,11 +89,11 @@ function MyProfile({ ds, p, detail, isNew }: { ds: Dataset; p: Player; detail: P
             <div className="small muted">{[club?.name, `#${p.id}`].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
-        <div className="row wrap" style={{ gap: 22 }}>
-          <div><div className="big-rating num" style={{ fontSize: 40, fontWeight: 750, letterSpacing: '-0.03em', lineHeight: 1 }}>{p.rating}</div><div className="small muted">±{p.sd}</div></div>
-          <div><div style={{ marginTop: 6 }}><Delta v={p.ch12} /></div><div className="small muted" style={{ marginTop: 4 }}>12 months</div></div>
-          {rank && <div><div className="rating" style={{ fontSize: 20, marginTop: 4 }}>#{rank}</div><div className="small muted">active in {ds.meta.region}</div></div>}
-          <div><div className="rating" style={{ fontSize: 20, marginTop: 4 }}>{p.peak}</div><div className="small muted">peak</div></div>
+        <div className="kpis">
+          <div><div className="kpi-big num">{p.rating}</div><div className="small muted">±{p.sd}</div></div>
+          <div><div style={{ marginTop: 4 }}><Delta v={p.ch12} /></div><div className="small muted" style={{ marginTop: 4 }}>12 months</div></div>
+          {rank && <div><div className="kpi num">#{rank}</div><div className="small muted">in {ds.meta.region}</div></div>}
+          <div><div className="kpi num">{p.peak}</div><div className="small muted">peak</div></div>
         </div>
         <div>
           <h3 style={{ marginBottom: 4 }}>Recent events</h3>
@@ -128,6 +128,7 @@ function Watchlist({ ds, ids, mine, detail, isNew }: {
   const nav = useNavigate();
   const info = useStore(watchInfo);
   const { sort, th } = useSort<Key>('rating');
+  const mobile = useMobile();
 
   const vsMe = useMemo(() => {
     const m = new Map<number, { w: number; n: number }>();
@@ -181,7 +182,19 @@ function Watchlist({ ds, ids, mine, detail, isNew }: {
         <PlayerSearchBox ds={ds} exclude={ids} placeholder="Add a player to your watchlist…" onPick={(p) => watch(p.id, p.rating)} />
       </div>
 
-      {players.length > 0 ? (
+      {players.length > 0 && mobile ? (
+        <div className="mlist" style={{ marginTop: 12, borderTop: '1px solid var(--border)' }}>
+          {rows.map((p) => {
+            const r = vsMe.get(p.id);
+            return (
+              <MRow key={p.id} onClick={() => nav(`/player/${p.id}`)} lead={<Avatar p={p} />} title={displayName(p.name)}
+                meta={isNew(p) ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>● New results</span>
+                  : <>{r ? `vs me ${r.w}–${r.n - r.w} · ` : ''}played {relative(p.lastPlayed)}</>}
+                side={<><Rating p={p} /><Delta v={since(p) ?? p.ch12} /></>} />
+            );
+          })}
+        </div>
+      ) : players.length > 0 ? (
         <div className="table-wrap" style={{ marginTop: 12 }}>
           <table>
             <thead><tr>

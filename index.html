@@ -6,8 +6,13 @@
     <title>Rally · ACT Table Tennis Ratings</title>
     <meta name="description" content="Search ACT table tennis players, explore rating history, and compare players. Data from Ratings Central." />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='13' cy='13' r='10' fill='%23e34948'/><rect x='19' y='19' width='4' height='11' rx='2' transform='rotate(-45 21 24)' fill='%23784421'/><circle cx='26' cy='7' r='3' fill='%23eda100'/></svg>" />
+    <meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script>
-      try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+      try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
     </script>
   </head>
   <body>

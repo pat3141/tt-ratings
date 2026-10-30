@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CompareChart, RangePicker, type CompareMode, type Range } from '../components/Charts';
 import { PlayerSearchBox } from '../components/Search';
-import { Delta, Icon, Loading } from '../components/ui';
+import { Delta, Icon, Loading, useMobile } from '../components/ui';
 import { usePlayers, useDataset, type Player } from '../lib/data';
 import { displayName, fmtDate, fmtMonth, isActive, relative, SERIES, winPct } from '../lib/format';
 import { compareTray, MAX_COMPARE } from '../lib/store';
@@ -13,6 +13,7 @@ export default function Compare() {
   const [params, setParams] = useSearchParams();
   const [mode, setMode] = useState<CompareMode>('date');
   const [range, setRange] = useState<Range>('all');
+  const mobile = useMobile();
 
   const ids = useMemo(() => {
     const fromUrl = (params.get('ids') ?? '').split(',').map(Number).filter((n) => n > 0);
@@ -77,7 +78,7 @@ export default function Compare() {
               </div>
               {mode === 'date' && <RangePicker value={range} onChange={setRange} />}
             </div>
-            {details.size < players.length ? <Loading h={380} /> : <CompareChart players={players} histories={histories} mode={mode} range={range} />}
+            {details.size < players.length ? <Loading h={380} /> : <CompareChart players={players} histories={histories} mode={mode} range={range} height={mobile ? 280 : 380} />}
             {mode === 'career' && <p className="small muted" style={{ margin: '8px 0 0' }}>Career view starts every player at year 0 — their first rated event — to compare development speed.</p>}
           </div>
 
@@ -92,6 +93,7 @@ export default function Compare() {
 type Details = ReturnType<typeof usePlayers>;
 
 function StatsTable({ players, details }: { players: Player[]; details: Details }) {
+  const mobile = useMobile();
   const rows: { label: string; get: (p: Player) => number | null; show?: (p: Player) => ReactNode; better?: 1 | -1 }[] = [
     { label: 'Current rating', get: (p) => p.rating, show: (p) => <><b className="rating">{p.rating}</b><span className="sd">±{p.sd}</span></>, better: 1 },
     { label: '12-month change', get: (p) => p.ch12, show: (p) => <Delta v={p.ch12} />, better: 1 },
@@ -115,10 +117,10 @@ function StatsTable({ players, details }: { players: Player[]; details: Details 
     <div className="card flush">
       <div className="card-head"><h2>Side by side</h2><span className="sub">best value in each row highlighted</span></div>
       <div className="table-wrap" style={{ marginTop: 6 }}>
-        <table>
+        <table className="sticky-first">
           <thead><tr><th />{players.map((p, i) => (
             <th key={p.id} className="r" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 13, color: 'var(--ink)' }}>
-              <span className="row" style={{ justifyContent: 'flex-end', gap: 6 }}><span className="dot" style={{ background: SERIES[i] }} />{displayName(p.name)}</span>
+              <span className="row" style={{ justifyContent: 'flex-end', gap: 6 }}><span className="dot" style={{ background: SERIES[i] }} />{mobile ? displayName(p.name).split(' ')[0] : displayName(p.name)}</span>
             </th>
           ))}</tr></thead>
           <tbody>
@@ -156,14 +158,14 @@ function HeadToHead({ players, details }: { players: Player[]; details: Details 
     <div className="card flush">
       <div className="card-head"><h2>Head to head</h2><span className="sub">row player’s record against column player</span></div>
       <div className="table-wrap" style={{ marginTop: 6 }}>
-        <table>
+        <table className="sticky-first">
           <thead><tr><th />{players.map((p, i) => (
             <th key={p.id} className="c"><span className="dot" style={{ background: SERIES[i], marginRight: 6 }} />{displayName(p.name).split(' ')[0]}</th>
           ))}</tr></thead>
           <tbody>
             {players.map((a, i) => (
               <tr key={a.id}>
-                <td className="nowrap"><span className="dot" style={{ background: SERIES[i], marginRight: 8 }} /><b>{displayName(a.name)}</b></td>
+                <td className="nowrap"><span className="dot" style={{ background: SERIES[i], marginRight: 8 }} /><b>{displayName(a.name).split(' ')[0]}</b></td>
                 {players.map((b) => {
                   if (a.id === b.id) return <td key={b.id} className="c muted">—</td>;
                   const r = record(a, b);

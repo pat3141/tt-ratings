@@ -4,7 +4,7 @@ import { DistributionChart } from '../components/Charts';
 import { PlayerSearchBox } from '../components/Search';
 import { Delta, Icon, Loading, PlayerCell, Rating, Sparkline, Stat } from '../components/ui';
 import { useDataset, useEvents } from '../lib/data';
-import { fmtDate, isActive, relative } from '../lib/format';
+import { fmtDate, isActive, relative, since } from '../lib/format';
 import { me, starred, useList, useStore } from '../lib/store';
 
 export default function Home() {
@@ -62,9 +62,10 @@ export default function Home() {
 
   return (
     <div className="stack" style={{ gap: 24 }}>
-      <section style={{ padding: '28px 0 8px' }}>
-        <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', letterSpacing: '-0.03em', maxWidth: 720 }}>
-          Every {ds.meta.region} table tennis rating, <span style={{ color: 'var(--accent)' }}>beautifully searchable.</span>
+      <section className="hero">
+        <div className="eyebrow"><span className="pulse" />Updated {since(ds.meta.updated)} from Ratings Central</div>
+        <h1>
+          Every {ds.meta.region} table tennis rating, <span className="grad-text">beautifully searchable.</span>
         </h1>
         <p className="ink2" style={{ fontSize: 17, maxWidth: 620, margin: '12px 0 20px' }}>
           Find any player instantly, explore their full rating history and match record, and compare up to six players side by side.
@@ -78,7 +79,7 @@ export default function Home() {
         <Stat label="Rated players" value={ds.players.length.toLocaleString()} foot={`${s.newPlayers} new this year`} />
         <Stat label="Active (12 months)" value={s.active.length.toLocaleString()} foot={`${Math.round((100 * s.active.length) / ds.players.length)}% of all players`} />
         <Stat label="Events (12 months)" value={ev ? ev.list.filter((e) => e.date >= s.yearAgo).length : '…'} foot={ev ? `${ev.list.length.toLocaleString()} all-time` : undefined} />
-        <Stat label="Last updated" value={<span style={{ fontSize: 22 }}>{relative(ds.meta.updated.slice(0, 10))}</span>} foot={fmtDate(ds.meta.updated.slice(0, 10))} />
+        <Stat label="Clubs" value={ds.clubs.size} foot={<Link to="/clubs" className="link">Browse clubs →</Link>} />
       </div>
 
       <MyStrip />

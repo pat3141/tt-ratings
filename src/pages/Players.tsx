@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CompareButton, Delta, Icon, Loading, PlayerCell, Rating, Sparkline, StarButton, cmp, useSort } from '../components/ui';
+import { Avatar, CompareButton, Delta, Icon, Loading, MRow, PlayerCell, Rating, SortSelect, Sparkline, StarButton, cmp, useMobile, useSort } from '../components/ui';
 import { useDataset, type Player } from '../lib/data';
 import { displayName, isActive, relative } from '../lib/format';
 import { searchPlayers } from '../lib/search';
@@ -15,7 +15,9 @@ export default function Players() {
   const [params, setParams] = useSearchParams();
   const stars = useList(starred);
   const [limit, setLimit] = useState(PAGE);
-  const { sort, th } = useSort<Key>('rating');
+  const { sort, th, setSort } = useSort<Key>('rating');
+  const mobile = useMobile();
+  const [showFilters, setShowFilters] = useState(false);
 
   const q = params.get('q') ?? '';
   const club = params.get('club') ?? '';
@@ -56,6 +58,7 @@ export default function Players() {
   if (!ds) return <Loading h={500} />;
 
   const clubs = [...ds.clubs.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const activeFilters = [club, sex, activity !== '365' ? activity : '', onlyStarred ? '1' : '', minR, maxR].filter(Boolean).length;
 
   return (
     <div className="stack">
@@ -71,6 +74,12 @@ export default function Players() {
             <input className="input" style={{ width: '100%', paddingLeft: 40 }} placeholder="Filter by name, ID or club…"
               value={q} onChange={(e) => set('q', e.target.value)} aria-label="Filter players" />
           </div>
+          {mobile && (
+            <button className={`btn ${showFilters || activeFilters ? 'on' : ''}`} onClick={() => setShowFilters(!showFilters)} aria-expanded={showFilters}>
+              Filters{activeFilters ? ` · ${activeFilters}` : ''}
+            </button>
+          )}
+          {(!mobile || showFilters) && <>
           <select className="select" value={activity} onChange={(e) => set('active', e.target.value === '365' ? '' : e.target.value)} aria-label="Activity">
             <option value="90">Played in last 3 months</option>
             <option value="365">Played in last 12 months</option>
@@ -89,10 +98,31 @@ export default function Players() {
           <input className="input num" style={{ width: 82 }} placeholder="Max" inputMode="numeric" value={maxR}
             onChange={(e) => set('max', e.target.value.replace(/\D/g, ''))} aria-label="Maximum rating" />
           <label className="toggle"><input type="checkbox" checked={onlyStarred} onChange={(e) => set('starred', e.target.checked ? '1' : '')} />Watchlist</label>
+          </>}
+          {mobile && (
+            <SortSelect value={sort} onChange={setSort} options={[
+              ['rating', 'Rating'], ['ch12', '12-month change'], ['peak', 'Peak'], ['winpct', 'Win %'],
+              ['events', 'Events'], ['lastPlayed', 'Recently played'], ['name', 'Name', 1],
+            ]} />
+          )}
         </div>
       </div>
 
       <div className="card flush">
+        {mobile ? (
+          <div className="mlist">
+            {rows.slice(0, limit).map((p) => {
+              const c = p.club != null ? ds.clubs.get(p.club) : undefined;
+              return (
+                <MRow key={p.id} onClick={() => nav(`/player/${p.id}`)} lead={<Avatar p={p} />}
+                  title={displayName(p.name)}
+                  meta={[c?.short || c?.name, `played ${relative(p.lastPlayed)}`].filter(Boolean).join(' · ')}
+                  side={<><Rating p={p} /><Delta v={p.ch12} /></>} />
+              );
+            })}
+            {!rows.length && <div className="muted" style={{ padding: 40, textAlign: 'center' }}>No players match these filters.</div>}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table>
             <thead>
@@ -128,6 +158,7 @@ export default function Players() {
           </table>
           {!rows.length && <div className="muted" style={{ padding: 40, textAlign: 'center' }}>No players match these filters.</div>}
         </div>
+        )}
         {rows.length > limit && (
           <div style={{ padding: 14, textAlign: 'center', borderTop: '1px solid var(--border)' }}>
             <button className="btn" onClick={() => setLimit((l) => l + 100)}>Show more ({(rows.length - limit).toLocaleString()} remaining)</button>
