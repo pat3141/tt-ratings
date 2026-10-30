@@ -61,15 +61,7 @@ export default function Home() {
 
   return (
     <div className="stack" style={{ gap: 24 }}>
-      <section className="hero">
-        <div className="eyebrow"><span className="pulse" />Updated {since(ds.meta.updated)} from Ratings Central</div>
-        <h1>
-          Every {ds.meta.region} table tennis rating, <span className="grad-text">beautifully searchable.</span>
-        </h1>
-        <p className="ink2" style={{ fontSize: 17, maxWidth: 620, margin: '12px 0 0' }}>
-          Find any player with the search bar above, explore their full rating history and match record, and compare up to six players side by side.
-        </p>
-      </section>
+      <div className="eyebrow" style={{ alignSelf: 'flex-start' }}><span className="pulse" />Updated {since(ds.meta.updated)} from Ratings Central</div>
 
       <div className="grid grid-4">
         <Stat label="Rated players" value={ds.players.length.toLocaleString()} foot={`${s.newPlayers} new this year`} />
