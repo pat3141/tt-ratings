@@ -24,7 +24,7 @@ It is a static React + Vite site, hosted free on GitHub Pages.
 
 The fetch is incremental: a player is only re-downloaded when their last event changes.
 
-The GitHub Action in `.github/workflows/deploy.yml` runs daily and on every push. It refreshes the data, commits it, builds the site and deploys it to Pages. You can also run it manually from the **Actions** tab; tick **full** to re-download everything.
+The GitHub Action in `.github/workflows/deploy.yml` runs every 6 hours and on every push. It refreshes the data, commits it, builds the site and deploys it to Pages. You can also run it manually from the **Actions** tab; tick **full** to re-download everything.
 
 ## Develop
 
