@@ -97,9 +97,25 @@ await fs.mkdir(PLAYER_DIR, { recursive: true });
 
 console.log(`Region: ${region.name}`);
 console.log('Fetching clubs…');
-const clubRows = parseCSV(await get(`${BASE}/ClubList.php?${qs({
-  ClubSport: 'Any', ClubCountry: region.country, CSV_Output: 'Text',
-})}`));
+// Ratings Central serves an HTML page instead of CSV while it processes new results
+// (typically weekday mornings AU time). Wait a while for it to come back; if it doesn't,
+// leave the existing data untouched and exit cleanly so the site still deploys.
+const clubsUrl = `${BASE}/ClubList.php?${qs({ ClubSport: 'Any', ClubCountry: region.country, CSV_Output: 'Text' })}`;
+let clubsCsv;
+for (let attempt = 1; ; attempt++) {
+  try {
+    clubsCsv = await get(clubsUrl, 3);
+    break;
+  } catch (err) {
+    if (attempt >= 8) {
+      console.log(`::warning::Ratings Central unavailable (${err.message}); keeping previous data.`);
+      process.exit(0);
+    }
+    console.log(`  Ratings Central unavailable (${err.message}); retrying in 2 min (attempt ${attempt}/8)…`);
+    await sleep(120_000);
+  }
+}
+const clubRows = parseCSV(clubsCsv);
 const clubs = Object.fromEntries(clubRows.map((c) => [c.ID, {
   id: Number(c.ID), name: c.Name, short: c.Nickname || '', city: c.City, province: c.Province,
   website: c.Website || '', active: c.Status === 'Active',

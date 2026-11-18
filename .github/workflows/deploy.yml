@@ -5,6 +5,9 @@ on:
     branches: [main]
   schedule:
     - cron: '0 */6 * * *' # every 6 hours (00, 06, 12, 18 UTC)
+    # Extra pull after Ratings Central's Wed/Fri morning update:
+    # 03:00 UTC = 2 pm Canberra during daylight saving (AEDT), 1 pm in winter (AEST).
+    - cron: '0 3 * * 3,5'
   workflow_dispatch:
     inputs:
       full:
